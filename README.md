@@ -21,34 +21,79 @@ This repository pairs domain-specific *builder* agents (which draft code, workfl
 2. **Copy the agent files you need** into your project's `agents/` (and `.github/agents/` where applicable). Start with `scientific-implementation-agent`, `scholarly-rigor-reviewer`, and `always`.
 3. **Use the standard workflow** below: scope → build → audit → final gate. Log every prompt in `agents/prompt_log.md`.
 
-### Worked example — SDM for *Eschscholzia californica*
+### Worked examples
 
-A first end-to-end pass that maps current and 2070 climatic suitability of California poppy. Read this *before* the abstract guidance below — the case teaches the workflow.
+The same scope → build → domain audit → rigor audit → final gate workflow applies across very different ecological tasks. Read at least one example before the abstract guidance below — the case teaches the workflow. SDM is one example; trait harmonization, occurrence cleaning, and community ordination are equally valid entry points.
 
-**Step 1 — `ecology-user` (scope the question)**
+#### Example A — Trait harmonization across published datasets
+
+**Step 1 — `ecology-user` (scope)**
+> "I am merging leaf-economics traits from five published datasets to test a global LMA–Nmass relationship. Help me define the inclusion criteria, taxonomic backbone, unit policy, and the claims I will and will not be able to make."
+
+**Step 2 — `scientific-implementation-agent` (build)**
+> "Draft a reproducible R workflow that ingests the five trait files, normalizes column names, reconciles taxonomy through `taxonomy-reconciliation`, harmonizes units through `bio-units-specialist`, and writes a single tidy table with per-row source and citation columns."
+
+**Step 3 — `bio-units-specialist` (domain audit)**
+> "Audit the merged trait table for unit consistency, dimensional sanity, and biologically implausible values. Flag any column where the inferred unit confidence is low and propose conversions or exclusions."
+
+**Step 4 — `scholarly-rigor-reviewer` (rigor audit)**
+> "Audit the methods narrative and figure captions for unsupported claims, missing citations, and any place where exploratory results are described as confirmatory."
+
+**Step 5 — `always` (final gate)**
+> "Run final pre-release gate before I share the harmonized dataset and notebook with co-authors."
+
+#### Example B — Cleaning a GBIF occurrence download
+
+**Step 1 — `ecology-user` (scope)**
+> "I downloaded ~120k GBIF records for a target genus to estimate range size. Help me scope what 'range size' means here, what filters are defensible, and what claims I can make about native vs. introduced occurrences."
+
+**Step 2 — `scientific-implementation-agent` (build)**
+> "Build a reproducible cleaning pipeline: record the GBIF download DOI, apply Darwin Core checks, run `CoordinateCleaner`-style flags, document every filter step with input and output counts, and export both cleaned and rejected tables."
+
+**Step 3 — `biodiversity-informatics-checker` + `taxonomy-reconciliation` (domain audit)**
+> "Audit the pipeline for Darwin Core completeness, coordinate validity, taxonomic reconciliation against an accepted backbone, and transparency of QA losses at each filter step."
+
+**Step 4 — `biodiversity-science-guard` (interpretation audit)**
+> "Audit the draft results paragraph for native/introduced/cultivated framing, sampling-bias caveats, and any overclaim about range size given known GBIF effort bias."
+
+**Step 5 — `always` (final gate)**
+> "Run final pre-release gate before I share the cleaned occurrence table."
+
+#### Example C — Community ordination of a vegetation plot dataset
+
+**Step 1 — `ecology-user` (scope)**
+> "I have ~400 vegetation plots with cover-by-species data and seven soil + climate covariates. Help me decide whether the question is descriptive (gradient structure) or constrained (response to covariates), and what claims each design supports."
+
+**Step 2 — `scientific-implementation-agent` (build)**
+> "Draft a reproducible community ordination workflow in R using `vegan`: appropriate transformation, distance choice, unconstrained (NMDS/PCoA) and constrained (RDA/CCA) ordinations, permutation tests, and diagnostic plots."
+
+**Step 3 — `ter-braak-multivariate` + `stats-specialist` (domain audit)**
+> "Audit the ordination choices: transformation justification, distance metric, gradient length, axis interpretation, permutation design, and overfitting risk in the constrained model."
+
+**Step 4 — `scholarly-rigor-reviewer` (rigor audit)**
+> "Audit the methods and results sections for unsupported causal language, missing citations, and consistency between ordination outputs and verbal claims."
+
+**Step 5 — `always` (final gate)**
+> "Run final pre-release gate before submitting the figure draft to co-authors."
+
+#### Example D — SDM for *Eschscholzia californica* (climate-suitability case)
+
+**Step 1 — `ecology-user` (scope)**
 > "I want to map current and 2070 climatic suitability for *Eschscholzia californica* in California. Help me scope objective, accessible area, predictor set, partitioning strategy, and what claims I'm allowed to make."
-
-*Why first:* pin down the question and the boundary of defensible claims before any code is written.
 
 **Step 2 — `scientific-implementation-agent` (build)**
 > "Implement a reproducible SDM pipeline in R: GBIF/BIEN pull with provenance, spatial thinning, target-group background, WorldClim v2.1 predictors clipped to accessible area, MaxEnt + GLM ensemble, spatial-block CV, response curves, MESS mask, and exported diagnostics CSVs."
 
-*Why:* generate a reproducible pipeline, not a one-off script.
-
-**Step 3 — `merow-ecology` (ecological audit)**
+**Step 3 — `merow-ecology` (domain audit)**
 > "Audit this SDM for ecological defensibility: is the calibration region justified, are predictors mechanistically relevant, is partitioning appropriate for the projection scenario, and is extrapolation risk reported and masked?"
-
-*Why:* ensure the model is ecologically — not just statistically — defensible.
 
 **Step 4 — `scholarly-rigor-reviewer` (rigor audit)**
 > "Before I share this notebook with my advisor / push to GitHub, audit citations, statistical claims, uncertainty reporting, and reproducibility. Flag any unverified DOIs or overstated conclusions."
 
-*Why:* catch fabricated citations, overclaiming, and missing uncertainty.
-
 **Step 5 — `always` (final gate)**
 > "Run final pre-release gate: verify provenance log, build status, citation verification status, and push status. Return PASS or BLOCKED."
 
-*Why:* nothing leaves the bench until this returns PASS.
+*Caption: the same five-step pattern works for trait harmonization, occurrence cleaning, ordination, and SDM — only the domain-audit reviewer changes.*
 
 ---
 
@@ -154,7 +199,9 @@ The same flow as a checklist:
 
 ### Avoid common pitfalls
 
-Sorted by how often new users hit them.
+Sorted by how often new users hit them. Cross-cutting pitfalls apply to any workflow; domain-specific pitfalls illustrate where reviewer agents are most useful.
+
+**Cross-cutting**
 
 | Symptom | Fix |
 |---|---|
@@ -164,13 +211,36 @@ Sorted by how often new users hit them.
 | Skipping the rigor-review pass before sharing | `scholarly-rigor-reviewer` is mandatory before any release. |
 | Prompt drift across long sessions | Restart the session; re-anchor with the agent file. |
 | Scope creep ("just one more thing") | Re-scope with `ecology-user`; do not let the build expand silently. |
-| Confusing presence-only AUC with predictive truth | Use spatial-block CV; report AUC with caveats. |
-| Global background instead of accessible area (M) | Define and justify M before background sampling. |
-| Random CV when projecting in space/time | Use spatial-block or temporal-block CV. |
-| Treating WorldClim ~1 km grids as ground truth | Disclose resolution; avoid microhabitat claims. |
-| Binary suitability map presented as "the result" | Show continuous suitability + MESS mask. |
-| Native-range model used as invasive-range prediction | State scope; do not extrapolate framing. |
 | Hidden QA losses or filter cascades | Report counts at every filter step. |
+| Correlation reported as causation | State the identification strategy or rewrite as associational. |
+
+**Trait & allometry workflows**
+
+| Symptom | Fix |
+|---|---|
+| Mixed or undeclared units across sources | Run `bio-units-specialist`; record canonical unit per column. |
+| Biologically implausible values retained silently | Apply trait bounds and log exclusions with rationale. |
+| Source and citation columns dropped during merging | Preserve per-row provenance and citation fields end-to-end. |
+
+**Occurrence & taxonomy workflows**
+
+| Symptom | Fix |
+|---|---|
+| Names accepted without reconciliation | Route through `taxonomy-reconciliation` against an explicit backbone. |
+| Native / introduced / cultivated treated as absolute | Treat as context-dependent; state the source of the assignment. |
+| GBIF effort bias mistaken for ecological pattern | Audit with `biodiversity-informatics-checker`; disclose sampling bias. |
+
+**Modeling & inference (incl. SDM, ordination)**
+
+| Symptom | Fix |
+|---|---|
+| Confusing presence-only AUC with predictive truth | Use spatial-block CV; report AUC with caveats. |
+| Global background instead of accessible area (M) in SDM | Define and justify M before background sampling. |
+| Random CV when projecting in space or time | Use spatial-block or temporal-block CV. |
+| Treating ~1 km climate grids as ground truth | Disclose resolution; avoid microhabitat claims. |
+| Binary suitability map presented as "the result" | Show continuous suitability + extrapolation mask (e.g., MESS). |
+| Native-range model used as invasive-range prediction | State scope; do not extrapolate framing. |
+| Constrained ordination overfit to many covariates | Justify covariate set; report permutation tests and adjusted R². |
 
 ### Evaluate an agent's output
 
